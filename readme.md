@@ -19,3 +19,6 @@ Then, I can use the Metamask account to deploy smart contracts, to send transact
 ### Metamask, Ganache, and HDWalletProvider
 If you type `ganache console` in the project root folder, and then type `accounts`. A list of 10 account addresses will show up and it is the same with 10 accounts you see in Ganache UI.
 However, type `ganache console --network ganache`, then type `accounts`. You will see the account addresses are printed out are your Metamask account address.
+
+### Config file
+You can see configuations of networks in `truffle-config.js`
