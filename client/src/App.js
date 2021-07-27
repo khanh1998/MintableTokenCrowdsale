@@ -14,6 +14,9 @@ class App extends Component {
     input: { kycAddress: '', },
     tokenSaleAddr: '',
     userTokens: 0,
+    totalSupply: 0,
+    minting: { value: 0, address: '' },
+    isMinter: false,
   };
 
   componentDidMount = async () => {
@@ -37,7 +40,7 @@ class App extends Component {
         { web3, accounts, contracts: { kTokenIns, kTokenSaleIns, kycIns }, tokenSaleAddr },
         this.getUserToken
       );
-      this.listenToTransferEvent()
+      this.callbacks()
     } catch (error) {
       // Catch any errors for any of the above operations.
       alert(
@@ -47,11 +50,31 @@ class App extends Component {
     }
   };
 
+  callbacks = () => {
+    this.getCurrentTotalSupply()
+    this.listenToTransferEvent()
+    this.isMinter()
+  }
+
+  getCurrentTotalSupply = async () => {
+    const { kTokenIns } = this.state.contracts
+    const totalSupply = await kTokenIns.methods.totalSupply().call()
+    this.setState({ totalSupply })
+  }
+
   getUserToken = async () => {
     const { kTokenIns } = this.state.contracts
     const { accounts } = this.state
     const userTokens = await kTokenIns.methods.balanceOf(accounts[0]).call()
     this.setState({ userTokens })
+  }
+
+  isMinter = async () => {
+    const { kTokenIns } = this.state.contracts
+    const { accounts } = this.state
+    const isMinter = await kTokenIns.methods.isMinter(accounts[0]).call()
+    console.log({ isMinter });
+    this.setState({ isMinter })
   }
 
   handleBuyToken = async (event) => {
@@ -77,22 +100,34 @@ class App extends Component {
     return instance
   }
 
-  handleInputChange = (event) => {
+  handleInputChange = (stateName) => (event) => {
     const { target } = event
     const value = target.type === 'checkbox' ? target.checked : target.value
     const { name } = target
+    const state = this.state[stateName]
+    state[name] = value
     this.setState({
-      input: { [name]: value }
+      ...state,
     })
   }
 
-  handleSubmit = async (event) => {
+  handleSubmit = async () => {
     const { kycAddress } = this.state.input
     const { kycIns } = this.state.contracts
     const from = this.state.accounts[0]
     console.log({ kycAddress, from })
     const res = await kycIns.methods.setKycCompleted(kycAddress).send({ from })
     console.log(res)
+  }
+
+  handleMintingToken = async () => {
+    const { address, value } = this.state.minting
+    const { web3 } = this.state
+    const { kTokenIns } = this.state.contracts
+    const from = this.state.accounts[0]
+    console.log({ address, value });
+    await kTokenIns.methods.mint(address, web3.utils.toWei(value, 'wei')).send({ from })
+    console.log("here");
   }
 
   render() {
@@ -103,14 +138,35 @@ class App extends Component {
       <div className="App">
         <h1>K Token sale</h1>
         <p>get your token now</p>
+        <p>{
+          this.state.isMinter ? "You are a minter" : "you are not a minter"
+        }</p>
         <h2>kyc whitelisting</h2>
         address to allow:
         <input
           name="kycAddress"
           value={this.state.input.kycAddress}
           placeholder="KyC Address"
-          onChange={this.handleInputChange} />
+          onChange={this.handleInputChange('input')} />
         <button onClick={this.handleSubmit}>Send</button>
+
+        <h2>Current available token</h2>
+        <p>{ this.state.totalSupply }</p>
+
+        <h2>Mint more token</h2>
+        <input
+          name="address"
+          type="text"
+          value={this.state.minting.address}
+          onChange={this.handleInputChange('minting')}
+        />
+        <input
+          name="value"
+          type="number"
+          value={this.state.minting.value}
+          onChange={this.handleInputChange('minting')}
+        />
+        <button onClick={this.handleMintingToken}>Send</button>
 
         <h2>Buy tokens</h2>
         <p>{this.state.tokenSaleAddr}</p>
